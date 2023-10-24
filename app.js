@@ -6,57 +6,66 @@ const dotenv = require('dotenv');
 const app = express();
 dotenv.config();
 app.use(express.static("public"));
-app.use(bodyParser.urlencoded({extended:true}));
+app.use(bodyParser.urlencoded({ extended: true }));
 
-app.get("/",function(req,res){
+app.get("/", function (req, res) {
     res.sendFile(__dirname + "/index.html");
-})
+});
 
-app.post("/",function(req,res){
-    const email  = req.body.email;
-    // console.log(email);
+app.post("/", function (req, res) {
+    const email = req.body.email;
 
     const data = {
         members: [
             {
                 email_address: email,
-                status: "subscribed"
+                status: "subscribed",
+                "merge_fields": {}
             }
-            
         ]
     };
 
     const jsonData = JSON.stringify(data);
 
-    const url = `${process.env.URL}` ;
+    const url = `${process.env.URL}`;
 
     const options = {
         method: "POST",
         auth: `${process.env.AUTH}`
-    }
-    const request = https.request(url,options, function(response){
+    };
 
-        if(response.statusCode===200){
-            res.sendFile(__dirname + "/success.html");
-        }
-        else res.sendFile(__dirname + "/failure.html");
+    const request = https.request(url, options, function (response) {
+        let responseData = '';
 
-        response.on("data",function(data){
-            console.log(JSON.parse(data));
-        })
-    })
+        response.on("data", function (chunk) {
+            responseData += chunk;
+        });
+
+        response.on("end", function () {
+            try {
+                const parsedData = JSON.parse(responseData);
+                console.log(parsedData);
+
+                if (response.statusCode === 200) {
+                    res.sendFile(__dirname + "/success.html");
+                } else {
+                    res.sendFile(__dirname + "/failure.html");
+                }
+            } catch (error) {
+                console.error("Error parsing JSON:", error);
+                res.sendFile(__dirname + "/failure.html"); // Handle parsing error
+            }
+        });
+    });
 
     request.write(jsonData);
     request.end();
-
 });
 
-app.post("/failure",function(req,res){
+app.post("/failure", function (req, res) {
     res.redirect("/");
-})
-app.listen(3000,function(){
+});
+
+app.listen(3000, function () {
     console.log("Server started at port 3000.");
 });
-
-// API key: f534c86d4b3f45ba246bb8c2fec4a57f-us21
-// Audience ID: dfa1f2552c
